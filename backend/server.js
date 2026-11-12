@@ -49,7 +49,8 @@ initCronJobs();
 
 const allowedOrigins = [
   "https://bluewhalefec.in",
-  "https://bluewhalecrm-gewx.vercel.app"
+  "https://bluewhale-ruddy.vercel.app"
+  
 ];
 
 app.use(cors({

@@ -10,7 +10,7 @@ const probeSrv = (uri) =>
 
 const connectDB = async () => {
   try {
-    const uri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/bluewhale";
+    const uri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/bluewhalegame";
     const srvOk = await probeSrv(uri);
     if (!srvOk) dns.setServers(["8.8.8.8", "1.1.1.1"]);
     const conn = await mongoose.connect(uri);
