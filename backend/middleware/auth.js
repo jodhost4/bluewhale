@@ -49,8 +49,27 @@ const hasPermission = (user, moduleKey, action) => {
   const perms = user.permissions;
   const empty = !perms || (Array.isArray(perms) ? perms.length === 0 : Object.keys(perms).length === 0);
   if (empty) return true;
-  if (Array.isArray(perms)) return action === "view" && perms.includes(moduleKey);
-  return !!(perms[moduleKey] && perms[moduleKey][action]);
+  if (Array.isArray(perms)) {
+    if (moduleKey === "dashboard" && perms.includes("staff_dashboard")) return true;
+    if (moduleKey === "attendance" && (perms.includes("my_attendance") || perms.includes("attendance"))) return true;
+    if (moduleKey === "entry" && (perms.includes("tv_display") || perms.includes("entry"))) return true;
+    return action === "view" && perms.includes(moduleKey);
+  }
+
+  // Exact match
+  if (perms[moduleKey] && perms[moduleKey][action]) return true;
+
+  // Module aliases / fallbacks
+  if (moduleKey === "dashboard" && perms.staff_dashboard && perms.staff_dashboard[action]) return true;
+  if (moduleKey === "staff_dashboard" && perms.dashboard && perms.dashboard[action]) return true;
+  if (moduleKey === "attendance" && ((perms.my_attendance && perms.my_attendance[action]) || (perms.staff_dashboard && action === "view"))) {
+    return true;
+  }
+  if (moduleKey === "my_attendance" && perms.attendance && perms.attendance[action]) return true;
+  if (moduleKey === "entry" && perms.tv_display && action === "view") return true;
+  if (moduleKey === "tv_display" && perms.entry && perms.entry[action]) return true;
+
+  return false;
 };
 
 // Restricts a route by module action, e.g. requirePermission("coupons", "edit")
@@ -85,7 +104,7 @@ const access = (moduleKey, action, ...roles) => (req, res, next) => {
     perms && !Array.isArray(perms) && Object.keys(perms).length > 0;
 
   if (explicit) {
-    if (perms[moduleKey] && perms[moduleKey][action]) return next();
+    if (hasPermission(user, moduleKey, action)) return next();
     res.status(403);
     throw new Error(`You do not have permission to ${action} this module`);
   }

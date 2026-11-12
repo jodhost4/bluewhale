@@ -92,7 +92,10 @@ const updateUser = asyncHandler(async (req, res) => {
   if (dob !== undefined) user.dob = dob;
   if (role !== undefined) user.role = role;
   if (active !== undefined) user.active = active;
-  if (permissions !== undefined) user.permissions = permissions;
+  if (permissions !== undefined) {
+    user.permissions = permissions;
+    user.markModified("permissions");
+  }
   if (password) {
     if (password.length < 6) {
       res.status(400);

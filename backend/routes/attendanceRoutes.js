@@ -18,11 +18,31 @@ const router = express.Router();
 
 router.use(protect);
 router.get("/", requirePermission("attendance", "view"), getAttendance);
-router.get("/summary", requirePermission("attendance", "view"), getAttendanceSummary);
-router.get("/me", requirePermission("attendance", "view"), selfStatus);
-router.get("/salary/:staffId", access("attendance", "view", "super_admin", "admin", "hr_manager"), computeMonthlySalary);
-router.post("/me/checkin", requirePermission("attendance", "create"), selfCheckIn);
-router.post("/me/checkout", requirePermission("attendance", "create"), selfCheckOut);
+
+// Summary: allowed for attendance view, or for a staff member querying their own record
+router.get("/summary", (req, res, next) => {
+  const userStaffId = (req.user?.staff?._id || req.user?.staff)?.toString();
+  if (userStaffId && req.query.staffId === userStaffId) return next();
+  return requirePermission("attendance", "view")(req, res, next);
+}, getAttendanceSummary);
+
+// Self status: available to any logged in user/staff
+router.get("/me", selfStatus);
+
+// Salary calculation: allowed for admin/hr/attendance view, or for a staff member querying their own salary
+router.get(
+  "/salary/:staffId",
+  (req, res, next) => {
+    const userStaffId = (req.user?.staff?._id || req.user?.staff)?.toString();
+    if (userStaffId && req.params.staffId === userStaffId) return next();
+    return access("attendance", "view", "super_admin", "admin", "hr_manager")(req, res, next);
+  },
+  computeMonthlySalary
+);
+
+// Self check-in / check-out
+router.post("/me/checkin", selfCheckIn);
+router.post("/me/checkout", selfCheckOut);
 router.post("/checkin", access("attendance", "create", "super_admin", "admin", "hr_manager"), checkIn);
 router.post("/checkout", access("attendance", "create", "super_admin", "admin", "hr_manager"), checkOut);
 router.post("/mark", access("attendance", "create", "super_admin", "admin", "hr_manager"), markStatus);

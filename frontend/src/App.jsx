@@ -216,7 +216,7 @@ function App() {
       <Route
         path="/attendance/my"
         element={
-          <ProtectedRoute module="attendance">
+          <ProtectedRoute module="my_attendance">
             <Layout title="My Attendance">
               <MyAttendance />
             </Layout>

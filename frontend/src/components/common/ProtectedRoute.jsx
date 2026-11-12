@@ -7,7 +7,7 @@ import { useAuth } from "../../context/AuthContext";
 // to also restrict by role, and module="coupons" to restrict by view permission.
 // Mirrors backend middleware/auth.js access(): an explicit module grant (Control)
 // overrides the role whitelist; without explicit permissions the role decides.
-const ProtectedRoute = ({ children, roles, module }) => {
+const ProtectedRoute = ({ children, roles, module, anyOf }) => {
   const { user, can } = useAuth();
 
   if (!user) return <Navigate to="/login" replace />;
@@ -17,11 +17,23 @@ const ProtectedRoute = ({ children, roles, module }) => {
     !Array.isArray(user.permissions) &&
     Object.keys(user.permissions).length > 0;
   const roleOk = !roles || roles.includes(user.role);
-  const allowed = hasExplicitPerms
-    ? module
-      ? can(module, "view")
-      : roleOk
-    : roleOk;
+
+  let allowed = roleOk;
+  if (hasExplicitPerms) {
+    if (anyOf && Array.isArray(anyOf)) {
+      allowed = anyOf.some((m) => can(m, "view"));
+    } else if (module) {
+      if (module === "dashboard") {
+        allowed = can("dashboard", "view") || can("staff_dashboard", "view");
+      } else if (module === "my_attendance") {
+        allowed = can("my_attendance", "view") || can("attendance", "view");
+      } else if (module === "tv_display") {
+        allowed = can("tv_display", "view") || can("entry", "view");
+      } else {
+        allowed = can(module, "view");
+      }
+    }
+  }
 
   if (!allowed) {
     return (

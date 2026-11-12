@@ -62,8 +62,7 @@ const tooltipStyle = {
   fontSize: 12,
 };
 
-const Dashboard = () => {
-  const { user, can } = useAuth();
+const ParkMetricsDashboard = ({ user, can }) => {
   const [period, setPeriod] = useState("daily");
   const [customRange, setCustomRange] = useState({ from: "", to: "" });
   const [data, setData] = useState(null);
@@ -118,27 +117,6 @@ const Dashboard = () => {
   if (!data) return <p className="text-sm text-coral-500">Could not load dashboard data.</p>;
 
   const delta = (key) => pct(current[key] || 0, previous[key] || 0);
-
-  const isAdmin = ["super_admin", "admin"].includes(user?.role);
-  const hasStaffDashboardPerm = can("staff_dashboard", "view");
-  const hasAdminDashboardPerm = can("dashboard", "view");
-
-  const isParkMetricsViewer =
-    ["super_admin", "admin", "cashier"].includes(user?.role) &&
-    !hasStaffDashboardPerm &&
-    (user?.role === "super_admin" || hasAdminDashboardPerm || !hasStaffDashboardPerm);
-
-  if (!isParkMetricsViewer || hasStaffDashboardPerm) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-xl font-bold text-ocean-900">Dashboard</h2>
-          <p className="text-xs text-ocean-400">Welcome, {user?.name}</p>
-        </div>
-        <MyAttendance mode="dashboard" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -361,6 +339,38 @@ const Dashboard = () => {
       )}
     </div>
   );
+};
+
+const Dashboard = () => {
+  const { user, can } = useAuth();
+
+  const hasStaffDashboardPerm = can("staff_dashboard", "view");
+  const hasAdminDashboardPerm =
+    user?.permissions &&
+    typeof user.permissions === "object" &&
+    !Array.isArray(user.permissions)
+      ? Boolean(user.permissions?.dashboard?.view)
+      : false;
+
+  const isParkMetricsViewer =
+    ["super_admin", "admin", "cashier"].includes(user?.role) &&
+    !hasStaffDashboardPerm &&
+    (user?.role === "super_admin" || hasAdminDashboardPerm || !hasStaffDashboardPerm);
+
+  // Non-park-metrics viewers (staff or users with Staff Dashboard permission) see their personal staff dashboard
+  if (!isParkMetricsViewer || hasStaffDashboardPerm) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-bold text-ocean-900">Dashboard</h2>
+          <p className="text-xs text-ocean-400">Welcome, {user?.name}</p>
+        </div>
+        <MyAttendance mode="dashboard" />
+      </div>
+    );
+  }
+
+  return <ParkMetricsDashboard user={user} can={can} />;
 };
 
 export default Dashboard;

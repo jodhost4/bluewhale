@@ -96,8 +96,24 @@ export const AuthProvider = ({ children }) => {
       const empty =
         !perms || (Array.isArray(perms) ? perms.length === 0 : Object.keys(perms).length === 0);
       if (empty) return true;
-      if (Array.isArray(perms)) return action === "view" && perms.includes(module);
-      return !!(perms[module] && perms[module][action]);
+      if (Array.isArray(perms)) {
+        if (module === "dashboard" && perms.includes("staff_dashboard")) return true;
+        if (module === "my_attendance" && (perms.includes("my_attendance") || perms.includes("attendance"))) return true;
+        if (module === "tv_display" && (perms.includes("tv_display") || perms.includes("entry"))) return true;
+        return action === "view" && perms.includes(module);
+      }
+
+      if (perms[module] && perms[module][action]) return true;
+
+      // Module aliases / fallbacks
+      if (module === "dashboard" && perms.staff_dashboard && perms.staff_dashboard[action]) return true;
+      if (module === "staff_dashboard" && perms.dashboard && perms.dashboard[action]) return true;
+      if (module === "attendance" && perms.my_attendance && perms.my_attendance[action]) return true;
+      if (module === "my_attendance" && perms.attendance && perms.attendance[action]) return true;
+      if (module === "entry" && perms.tv_display && action === "view") return true;
+      if (module === "tv_display" && perms.entry && perms.entry[action]) return true;
+
+      return false;
     },
     [user]
   );
