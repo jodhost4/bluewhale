@@ -27,13 +27,13 @@ connectDB().then(() => {
   // instead of matching their staff designation (e.g. indoor_staff, outdoor_staff, cashier)
   const syncStaffRoles = async () => {
     try {
+      require("./models/Staff");
       const User = require("./models/User");
       const users = await User.find({ staff: { $ne: null } }).populate("staff");
       for (const u of users) {
         if (u.staff && u.staff.designation && u.role === "billing_staff" && u.staff.designation !== "billing_staff") {
-          u.role = u.staff.designation;
-          await u.save();
-          console.log(`Synced user ${u.username} role to ${u.role}`);
+          await User.updateOne({ _id: u._id }, { role: u.staff.designation });
+          console.log(`Synced user ${u.username} role to ${u.staff.designation}`);
         }
       }
     } catch (err) {
@@ -49,20 +49,37 @@ initCronJobs();
 
 const allowedOrigins = [
   "https://bluewhalefec.in",
-  "https://bluewhale-ruddy.vercel.app"
-  
+  "http://bluewhalefec.in",
+  "https://www.bluewhalefec.in",
+  "http://www.bluewhalefec.in",
+  "https://bluewhale-ruddy.vercel.app",
+  "https://bluewhalecrm-gewx.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
 ];
 
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
+    if (!origin) return callback(null, true);
+    const clean = origin.replace(/\/$/, "");
+    if (
+      allowedOrigins.includes(clean) ||
+      clean.endsWith("bluewhalefec.in") ||
+      clean.endsWith("vercel.app") ||
+      clean.includes("localhost")
+    ) {
+      return callback(null, true);
     }
+    return callback(null, true);
   },
-  credentials: true
-}));
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 app.use(morgan("dev"));
 

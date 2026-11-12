@@ -76,8 +76,8 @@ const loginUser = asyncHandler(async (req, res) => {
 
   // Auto-sync role if user is linked to staff with a specific designation
   if (user.staff && user.staff.designation && user.role === "billing_staff" && user.staff.designation !== "billing_staff") {
+    await User.updateOne({ _id: user._id }, { role: user.staff.designation });
     user.role = user.staff.designation;
-    await user.save();
   }
 
   res.json({
@@ -103,8 +103,8 @@ const getMe = asyncHandler(async (req, res) => {
     .populate("staff", "name staffId designation dob joiningDate salaryType salaryAmount salaryStatus paidMonths");
 
   if (user && user.staff && user.staff.designation && user.role === "billing_staff" && user.staff.designation !== "billing_staff") {
+    await User.updateOne({ _id: user._id }, { role: user.staff.designation });
     user.role = user.staff.designation;
-    await user.save();
   }
 
   res.json({ success: true, data: user });
