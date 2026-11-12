@@ -1,6 +1,7 @@
 const asyncHandler = require("../utils/asyncHandler");
 const User = require("../models/User");
 const Staff = require("../models/Staff");
+const { createNotification } = require("../utils/notify");
 
 const USER_FIELDS = "-password";
 
@@ -62,6 +63,12 @@ const createUser = asyncHandler(async (req, res) => {
     dob,
     role: role || "billing_staff",
     permissions: permissions || [],
+  });
+
+  await createNotification({
+    message: `New user created: ${user.name} (Username: ${user.username || user.email}, Role: ${user.role})`,
+    module: "users",
+    username: user.username || user.email,
   });
 
   res.status(201).json({ success: true, data: user.toJSON({ transform: (_, u) => { delete u.password; return u; } }) });

@@ -45,7 +45,8 @@ const StaffList = () => {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    const { data } = await api.post("/staff", form);
+    const payload = { ...form, role: form.designation };
+    const { data } = await api.post("/staff", payload);
     setCreatedLogin(data.data.login);
     setForm(emptyForm);
     setShowForm(false);

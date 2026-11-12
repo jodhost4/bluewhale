@@ -20,8 +20,28 @@ const bookingRoutes = require("./routes/bookingRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
-connectDB();
+connectDB().then(() => {
+  // Sync any staff user roles whose role in User was defaulted to billing_staff
+  // instead of matching their staff designation (e.g. indoor_staff, outdoor_staff, cashier)
+  const syncStaffRoles = async () => {
+    try {
+      const User = require("./models/User");
+      const users = await User.find({ staff: { $ne: null } }).populate("staff");
+      for (const u of users) {
+        if (u.staff && u.staff.designation && u.role === "billing_staff" && u.staff.designation !== "billing_staff") {
+          u.role = u.staff.designation;
+          await u.save();
+          console.log(`Synced user ${u.username} role to ${u.role}`);
+        }
+      }
+    } catch (err) {
+      console.error("Staff role sync error:", err.message);
+    }
+  };
+  syncStaffRoles();
+});
 
 const app = express();
 const initCronJobs = require("./utils/cronJobs");
@@ -62,6 +82,7 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

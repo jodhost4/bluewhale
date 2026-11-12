@@ -11,7 +11,6 @@ const userSchema = new mongoose.Schema(
     dob: { type: String, trim: true },
     role: {
       type: String,
-      enum: ["super_admin", "admin", "billing_staff", "cashier", "entry_staff", "hr_manager"],
       default: "billing_staff",
     },
     // Fine-grained module access: { module: { view, create, edit, delete } }.

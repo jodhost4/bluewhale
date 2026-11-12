@@ -4,6 +4,7 @@ const User = require("../models/User");
 const Attendance = require("../models/Attendance");
 const AttendanceSetting = require("../models/AttendanceSetting");
 const { computeSalaryBreakdown } = require("../utils/salary");
+const { createNotification } = require("../utils/notify");
 
 const nextStaffId = async () => {
   const last = await Staff.findOne({}, { staffId: 1 }).sort({ staffId: -1 });
@@ -40,7 +41,8 @@ const getStaffMember = asyncHandler(async (req, res) => {
 
 // Creates a staff member AND an auto-generated login (username = staffId, password = DOB as DDMMYYYY)
 const createStaff = asyncHandler(async (req, res) => {
-  const { name, phone, designation, dob, joiningDate, salaryType, salaryAmount, role = "billing_staff" } = req.body;
+  const { name, phone, designation, dob, joiningDate, salaryType, salaryAmount } = req.body;
+  const role = req.body.role || designation || "billing_staff";
   if (!dob) {
     res.status(400);
     throw new Error("Date of birth is required to create the staff login");
@@ -59,6 +61,13 @@ const createStaff = asyncHandler(async (req, res) => {
     phone,
     role,
     staff: staff._id,
+  });
+
+  await createNotification({
+    message: `New staff created: ${name} (Username: ${username}, Role: ${user.role})`,
+    module: "staff",
+    username,
+    data: { staffId, name, role: user.role },
   });
 
   res.status(201).json({
@@ -83,6 +92,7 @@ const updateStaff = asyncHandler(async (req, res) => {
     if (req.body.phone !== undefined) user.phone = req.body.phone;
     if (req.body.dob !== undefined) user.password = dobPassword(req.body.dob);
     if (req.body.role !== undefined) user.role = req.body.role;
+    else if (req.body.designation !== undefined) user.role = req.body.designation;
     if (req.body.active !== undefined) user.active = req.body.active;
     await user.save();
   }

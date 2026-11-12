@@ -8,6 +8,7 @@ const CouponCode = require("../models/CouponCode");
 const Coupon = require("../models/Coupon");
 const { generateBillNumber, generateTagId } = require("../utils/generateId");
 const { generateQRDataUrl } = require("../utils/generateQR");
+const { createNotification } = require("../utils/notify");
 
 // @desc  Create a full billing transaction: find/create customer, apply coupon,
 //        generate bill, generate one wrist tag + QR PER PERSON, update customer stats.
@@ -218,6 +219,13 @@ const createBill = asyncHandler(async (req, res) => {
   customer.lastVisitDate = new Date();
   customer.customerType = customer.totalVisits >= 5 ? "vip" : customer.totalVisits > 1 ? "regular" : "new";
   await customer.save();
+
+  await createNotification({
+    message: `Bill ${bill.billNumber} created by ${req.user?.username || req.user?.name || "Cashier"} for ₹${bill.finalAmount} (${customer.name})`,
+    module: "billing",
+    username: req.user?.username,
+    data: { billNumber: bill.billNumber, finalAmount: bill.finalAmount, customerName: customer.name },
+  });
 
   res.status(201).json({
     success: true,

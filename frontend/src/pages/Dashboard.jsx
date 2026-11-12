@@ -120,10 +120,21 @@ const Dashboard = () => {
   const delta = (key) => pct(current[key] || 0, previous[key] || 0);
 
   const isAdmin = ["super_admin", "admin"].includes(user?.role);
-  const isBillingCashier = ["billing_staff", "cashier"].includes(user?.role);
-  const isEntryExit = ["entry_staff", "exit_staff"].includes(user?.role);
-  const isIndoorOutdoor = ["indoor_staff", "outdoor_staff"].includes(user?.role);
+  const isParkMetricsViewer = ["super_admin", "admin", "cashier"].includes(user?.role);
+  const isBillingCashier = ["cashier"].includes(user?.role);
   const isStaff = !isAdmin;
+
+  if (!isParkMetricsViewer) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-bold text-ocean-900">Dashboard</h2>
+          <p className="text-xs text-ocean-400">Welcome, {user?.name}</p>
+        </div>
+        <MyAttendance />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -192,15 +203,15 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {isAdmin && <StatCard label="Sales" value={money(current.sales)} icon={IndianRupee} accent="teal" delta={delta("sales")} />}
-        {(isAdmin || isBillingCashier) && <StatCard label="Bills" value={current.bills} icon={Receipt} accent="ocean" delta={delta("bills")} />}
-        {(isAdmin || isBillingCashier || isIndoorOutdoor) && <StatCard label="Visitors / Walk-ins" value={current.visitors} icon={Users} accent="coral" delta={delta("visitors")} />}
-        {(isAdmin || isEntryExit || isBillingCashier || isIndoorOutdoor) && <StatCard label="Entries" value={current.entries} icon={TicketCheck} accent="teal" delta={delta("entries")} />}
-        {(isAdmin || isBillingCashier) && <StatCard label="New Customers" value={current.newCustomers} icon={UserPlus} accent="ocean" delta={delta("newCustomers")} />}
-        {(isAdmin || isBillingCashier) && <StatCard label="Repeat Customers" value={current.repeatCustomers} icon={Repeat} accent="coral" delta={delta("repeatCustomers")} />}
-        {(isAdmin || isBillingCashier) && <StatCard label="Coupons Redeemed" value={current.coupons} icon={TicketCheck} accent="teal" delta={delta("coupons")} />}
-        {(isAdmin || isBillingCashier) && <StatCard label="Party Bookings" value={current.bookings} icon={CalendarHeart} accent="coral" delta={delta("bookings")} />}
-        {(isAdmin) && <StatCard label="Active Customers" value={data.activeCustomers} icon={UserCheck} accent="ocean" />}
-        {(isAdmin) && (
+        {isParkMetricsViewer && <StatCard label="Bills" value={current.bills} icon={Receipt} accent="ocean" delta={delta("bills")} />}
+        {isParkMetricsViewer && <StatCard label="Visitors / Walk-ins" value={current.visitors} icon={Users} accent="coral" delta={delta("visitors")} />}
+        {isParkMetricsViewer && <StatCard label="Entries" value={current.entries} icon={TicketCheck} accent="teal" delta={delta("entries")} />}
+        {isParkMetricsViewer && <StatCard label="New Customers" value={current.newCustomers} icon={UserPlus} accent="ocean" delta={delta("newCustomers")} />}
+        {isParkMetricsViewer && <StatCard label="Repeat Customers" value={current.repeatCustomers} icon={Repeat} accent="coral" delta={delta("repeatCustomers")} />}
+        {isParkMetricsViewer && <StatCard label="Coupons Redeemed" value={current.coupons} icon={TicketCheck} accent="teal" delta={delta("coupons")} />}
+        {isParkMetricsViewer && <StatCard label="Party Bookings" value={current.bookings} icon={CalendarHeart} accent="coral" delta={delta("bookings")} />}
+        {isAdmin && <StatCard label="Active Customers" value={data.activeCustomers} icon={UserCheck} accent="ocean" />}
+        {isAdmin && (
           <StatCard
             label="Staff Present Today"
             value={`${data.staffPresentToday} / ${data.staffTotal}`}

@@ -4,6 +4,7 @@ const AttendanceSetting = require("../models/AttendanceSetting");
 const Staff = require("../models/Staff");
 const User = require("../models/User");
 const { computeSalaryBreakdown } = require("../utils/salary");
+const { createNotification } = require("../utils/notify");
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -99,6 +100,17 @@ const checkIn = asyncHandler(async (req, res) => {
     record.gps = enforced.gps || record.gps;
     await record.save();
   }
+
+  const staff = await Staff.findById(staffId);
+  const user = await User.findOne({ staff: staffId });
+  const uname = user?.username || staff?.staffId || "staff";
+  await createNotification({
+    message: `Attendance check-in recorded for ${staff?.name || uname} (${uname})`,
+    module: "attendance",
+    username: uname,
+    data: { staffId, date, time: record.checkIn },
+  });
+
   res.json({ success: true, data: record });
 });
 
@@ -117,6 +129,17 @@ const checkOut = asyncHandler(async (req, res) => {
   record.facePhoto = enforced.facePhoto || record.facePhoto;
   record.gps = enforced.gps || record.gps;
   await record.save();
+
+  const staff = await Staff.findById(staffId);
+  const user = await User.findOne({ staff: staffId });
+  const uname = user?.username || staff?.staffId || "staff";
+  await createNotification({
+    message: `Attendance check-out recorded for ${staff?.name || uname} (${uname})`,
+    module: "attendance",
+    username: uname,
+    data: { staffId, date, time: record.checkOut },
+  });
+
   res.json({ success: true, data: record });
 });
 
@@ -150,6 +173,16 @@ const selfCheckIn = asyncHandler(async (req, res) => {
     record.gps = enforced.gps || record.gps;
     await record.save();
   }
+
+  const staff = await Staff.findById(staffId);
+  const uname = req.user?.username || staff?.staffId;
+  await createNotification({
+    message: `Staff ${staff?.name || req.user?.name || uname} (${uname}) marked self check-in`,
+    module: "attendance",
+    username: uname,
+    data: { staffId, date, time: record.checkIn },
+  });
+
   res.json({ success: true, data: record });
 });
 
@@ -169,6 +202,16 @@ const selfCheckOut = asyncHandler(async (req, res) => {
   record.facePhoto = enforced.facePhoto || record.facePhoto;
   record.gps = enforced.gps || record.gps;
   await record.save();
+
+  const staff = await Staff.findById(staffId);
+  const uname = req.user?.username || staff?.staffId;
+  await createNotification({
+    message: `Staff ${staff?.name || req.user?.name || uname} (${uname}) marked self check-out`,
+    module: "attendance",
+    username: uname,
+    data: { staffId, date, time: record.checkOut },
+  });
+
   res.json({ success: true, data: record });
 });
 
@@ -187,7 +230,21 @@ const selfStatus = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: {
-      staff: staff ? { _id: staff._id, staffId: staff.staffId, name: staff.name, designation: staff.designation } : null,
+      staff: staff
+        ? {
+            _id: staff._id,
+            staffId: staff.staffId,
+            name: staff.name,
+            phone: staff.phone,
+            designation: staff.designation,
+            dob: staff.dob,
+            joiningDate: staff.joiningDate,
+            salaryType: staff.salaryType,
+            salaryAmount: staff.salaryAmount,
+            salaryStatus: staff.salaryStatus || "pending",
+            paidMonths: staff.paidMonths || [],
+          }
+        : null,
       today,
       recent,
     },
@@ -285,6 +342,9 @@ const computeMonthlySalary = asyncHandler(async (req, res) => {
   const records = await Attendance.find({ staff: staffId, date: { $regex: `^${month}` } });
   const settings = await AttendanceSetting.getSingleton();
   const breakdown = computeSalaryBreakdown(staff, records, settings, month);
+  const isReceived = (staff.paidMonths || []).includes(month) || staff.salaryStatus === "received";
+  breakdown.salaryReceived = isReceived;
+  breakdown.salaryStatus = isReceived ? "received" : "pending";
   res.json({ success: true, data: breakdown });
 });
 

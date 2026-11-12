@@ -10,6 +10,8 @@ const staffSchema = new mongoose.Schema(
     joiningDate: { type: Date, required: true },
     salaryType: { type: String, enum: ["monthly", "daily"], default: "monthly" },
     salaryAmount: { type: Number, required: true },
+    salaryStatus: { type: String, enum: ["pending", "received"], default: "pending" },
+    paidMonths: { type: [String], default: [] },
     faceDescriptor: { type: [Number], default: undefined },
     faceRegistered: { type: Boolean, default: false },
     active: { type: Boolean, default: true },

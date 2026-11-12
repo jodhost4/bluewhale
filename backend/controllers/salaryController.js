@@ -24,9 +24,14 @@ const monthlySummary = asyncHandler(async (req, res) => {
     byStaff.get(key).push(r);
   }
 
-  const rows = staffList.map((staff) =>
-    computeSalaryBreakdown(staff, byStaff.get(String(staff._id)) || [], settings, month)
-  );
+  const rows = staffList.map((staff) => {
+    const res = computeSalaryBreakdown(staff, byStaff.get(String(staff._id)) || [], settings, month);
+    const isReceived = (staff.paidMonths || []).includes(month) || staff.salaryStatus === "received";
+    res.salaryReceived = isReceived;
+    res.salaryStatus = isReceived ? "received" : "pending";
+    res.staff.paidMonths = staff.paidMonths || [];
+    return res;
+  });
 
   const totals = rows.reduce(
     (acc, r) => ({
@@ -64,6 +69,9 @@ const staffSalary = asyncHandler(async (req, res) => {
   const records = await Attendance.find({ staff: staffId, date: { $regex: `^${month}` } }).sort({ date: 1 });
   const settings = await AttendanceSetting.getSingleton();
   const breakdown = computeSalaryBreakdown(staff, records, settings, month);
+  const isReceived = (staff.paidMonths || []).includes(month) || staff.salaryStatus === "received";
+  breakdown.salaryReceived = isReceived;
+  breakdown.salaryStatus = isReceived ? "received" : "pending";
 
   res.json({
     success: true,
@@ -71,4 +79,40 @@ const staffSalary = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { monthlySummary, staffSalary };
+// @desc  Toggle or update salary received status for a staff member for a month
+// @route PATCH /api/salary/status
+const toggleSalaryStatus = asyncHandler(async (req, res) => {
+  const { staffId, month, status } = req.body;
+  const staff = await Staff.findById(staffId);
+  if (!staff) {
+    res.status(404);
+    throw new Error("Staff member not found");
+  }
+
+  const targetMonth = month || new Date().toISOString().slice(0, 7);
+  let paid = staff.paidMonths || [];
+
+  if (status === "received") {
+    if (!paid.includes(targetMonth)) paid.push(targetMonth);
+    staff.salaryStatus = "received";
+  } else {
+    paid = paid.filter((m) => m !== targetMonth);
+    staff.salaryStatus = paid.length > 0 ? "received" : "pending";
+  }
+
+  staff.paidMonths = paid;
+  await staff.save();
+
+  res.json({
+    success: true,
+    data: {
+      staffId: staff._id,
+      month: targetMonth,
+      salaryStatus: staff.salaryStatus,
+      paidMonths: staff.paidMonths,
+      salaryReceived: status === "received",
+    },
+  });
+});
+
+module.exports = { monthlySummary, staffSalary, toggleSalaryStatus };

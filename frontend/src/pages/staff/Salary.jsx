@@ -35,6 +35,15 @@ const Salary = () => {
     setDetail(data.data);
   };
 
+  const handleToggleSalaryStatus = async (staffId, status) => {
+    try {
+      await api.patch("/salary/status", { staffId, month, status });
+      load(month);
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to update salary status");
+    }
+  };
+
   const totals = data?.totals;
 
   const columns = [
@@ -69,6 +78,24 @@ const Salary = () => {
       )
     },
     { key: "netSalary", label: "NET SALARY", render: (r) => <span className="font-bold text-teal-600">{fmtMoney(r.netSalary)}</span> },
+    {
+      key: "status",
+      label: "STATUS",
+      render: (r) => {
+        const received = r.salaryReceived || (r.staff?.paidMonths || []).includes(month) || r.staff?.salaryStatus === "received";
+        return (
+          <button
+            onClick={() => handleToggleSalaryStatus(r.staff._id, received ? "pending" : "received")}
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold transition ${
+              received ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 ring-1 ring-emerald-200" : "bg-amber-50 text-amber-700 hover:bg-amber-100 ring-1 ring-amber-200"
+            }`}
+            title="Click to toggle Paid / Pending"
+          >
+            {received ? "✓ Received" : "⏳ Pending"}
+          </button>
+        );
+      },
+    },
     {
       key: "actions",
       label: "",

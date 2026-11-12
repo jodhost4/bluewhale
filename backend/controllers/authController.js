@@ -61,7 +61,9 @@ const loginUser = asyncHandler(async (req, res) => {
 
   const user = await User.findOne({
     $or: [{ email: identifier.toLowerCase() }, { username: identifier.toLowerCase() }],
-  }).select("+password");
+  })
+    .select("+password")
+    .populate("staff", "name staffId designation dob joiningDate salaryType salaryAmount salaryStatus paidMonths");
 
   if (!user || !(await user.matchPassword(password))) {
     res.status(401);
@@ -70,6 +72,12 @@ const loginUser = asyncHandler(async (req, res) => {
   if (!user.active) {
     res.status(403);
     throw new Error("This account has been deactivated");
+  }
+
+  // Auto-sync role if user is linked to staff with a specific designation
+  if (user.staff && user.staff.designation && user.role === "billing_staff" && user.staff.designation !== "billing_staff") {
+    user.role = user.staff.designation;
+    await user.save();
   }
 
   res.json({
@@ -92,7 +100,13 @@ const loginUser = asyncHandler(async (req, res) => {
 const getMe = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id)
     .select("-password")
-    .populate("staff", "name staffId designation");
+    .populate("staff", "name staffId designation dob joiningDate salaryType salaryAmount salaryStatus paidMonths");
+
+  if (user && user.staff && user.staff.designation && user.role === "billing_staff" && user.staff.designation !== "billing_staff") {
+    user.role = user.staff.designation;
+    await user.save();
+  }
+
   res.json({ success: true, data: user });
 });
 

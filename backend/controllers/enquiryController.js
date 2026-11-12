@@ -1,6 +1,7 @@
 const asyncHandler = require("../utils/asyncHandler");
 const Enquiry = require("../models/Enquiry");
 const Customer = require("../models/Customer");
+const { createNotification } = require("../utils/notify");
 
 // @desc  Public enquiry from the landing page (no auth). Also upserts a CRM customer.
 // @route POST /api/enquiries/public
@@ -33,6 +34,12 @@ const createPublicEnquiry = asyncHandler(async (req, res) => {
     source: "landing",
     status: "new",
     customer: customer._id,
+  });
+
+  await createNotification({
+    message: `New enquiry received from ${name} (${mobile})`,
+    module: "enquiries",
+    data: { enquiryId: enquiry._id, name, mobile },
   });
 
   res.status(201).json({ success: true, data: enquiry });

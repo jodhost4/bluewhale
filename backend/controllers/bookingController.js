@@ -1,5 +1,6 @@
 const asyncHandler = require("../utils/asyncHandler");
 const Booking = require("../models/Booking");
+const { createNotification } = require("../utils/notify");
 
 const getBookings = asyncHandler(async (req, res) => {
   const { status, source, from, to } = req.query;
@@ -42,6 +43,12 @@ const getBooking = asyncHandler(async (req, res) => {
 
 const createBooking = asyncHandler(async (req, res) => {
   const booking = await Booking.create({ ...req.body, source: "staff", createdBy: req.user ? req.user._id : undefined });
+  await createNotification({
+    message: `Party booking created for ${booking.customerName} (${booking.eventType}) by ${req.user?.username || req.user?.name || "Staff"}`,
+    module: "bookings",
+    username: req.user?.username,
+    data: { bookingId: booking._id, customerName: booking.customerName },
+  });
   res.status(201).json({ success: true, data: booking });
 });
 
@@ -60,6 +67,11 @@ const createOnlineBooking = asyncHandler(async (req, res) => {
     advancePaid: req.body.advancePaid || 0,
     source: "online",
     status: "enquiry",
+  });
+  await createNotification({
+    message: `Online party booking requested by ${customerName} (${eventType})`,
+    module: "bookings",
+    data: { bookingId: booking._id, customerName },
   });
   res.status(201).json({ success: true, data: booking });
 });

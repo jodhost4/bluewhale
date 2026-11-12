@@ -3,11 +3,18 @@ const Coupon = require("../models/Coupon");
 const CouponCode = require("../models/CouponCode");
 const { generateCouponCode } = require("../utils/generateId");
 const { generateQRDataUrl } = require("../utils/generateQR");
+const { createNotification } = require("../utils/notify");
 
 // @desc  Create a new partner coupon campaign
 // @route POST /api/coupons
 const createCoupon = asyncHandler(async (req, res) => {
   const coupon = await Coupon.create(req.body);
+  await createNotification({
+    message: `Coupon campaign "${coupon.partnerName}" created by ${req.user?.username || req.user?.name || "Staff"}`,
+    module: "coupons",
+    username: req.user?.username,
+    data: { couponId: coupon._id, partnerName: coupon.partnerName },
+  });
   res.status(201).json({ success: true, data: coupon });
 });
 

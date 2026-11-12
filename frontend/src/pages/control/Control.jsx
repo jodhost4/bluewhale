@@ -34,7 +34,10 @@ const ROLE_LABELS = {
   admin: "Manager / Admin",
   billing_staff: "Billing Staff",
   cashier: "Cashier",
+  indoor_staff: "Indoor Staff",
+  outdoor_staff: "Outdoor Staff",
   entry_staff: "Entry Staff",
+  exit_staff: "Exit Staff",
   hr_manager: "HR Manager",
 };
 
@@ -43,7 +46,10 @@ const ROLE_COLORS = {
   admin: "amber",
   billing_staff: "teal",
   cashier: "teal",
+  indoor_staff: "teal",
+  outdoor_staff: "teal",
   entry_staff: "gray",
+  exit_staff: "gray",
   hr_manager: "amber",
 };
 
@@ -255,7 +261,16 @@ const Control = () => {
     },
   ];
 
-  const cashierUsers = users.filter((u) => ["cashier", "billing_staff"].includes(u.role));
+  // Only users who actually have the cashier role or staff designation cashier
+  const isCashier = (u) => u.role === "cashier" || u.staff?.designation === "cashier";
+  const isStaffUser = (u) =>
+    !!u.staff ||
+    ["cashier", "billing_staff", "indoor_staff", "outdoor_staff", "entry_staff", "exit_staff", "hr_manager"].includes(
+      u.role
+    );
+
+  const cashierUsers = users.filter(isCashier);
+  const allStaffUsers = users.filter(isStaffUser);
 
   return (
     <div className="space-y-4">
@@ -283,6 +298,12 @@ const Control = () => {
           <ShieldCheck size={15} /> Users & Access
         </button>
         <button
+          onClick={() => setTab("all_staff")}
+          className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition ${tab === "all_staff" ? "bg-ocean-900 text-white" : "bg-white text-ocean-600 ring-1 ring-ocean-100"}`}
+        >
+          <UserCheck size={15} /> All Staff ({allStaffUsers.length})
+        </button>
+        <button
           onClick={() => setTab("cashiers")}
           className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition ${tab === "cashiers" ? "bg-teal-500 text-white" : "bg-white text-ocean-600 ring-1 ring-ocean-100"}`}
         >
@@ -299,11 +320,15 @@ const Control = () => {
           <div>
             <label className="label">Role</label>
             <select className="input-field" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              <option value="admin">Manager / Admin</option>
-              <option value="billing_staff">Billing Staff</option>
               <option value="cashier">Cashier</option>
+              <option value="indoor_staff">Indoor Staff</option>
+              <option value="outdoor_staff">Outdoor Staff</option>
+              <option value="billing_staff">Billing Staff</option>
               <option value="entry_staff">Entry Staff</option>
+              <option value="exit_staff">Exit Staff</option>
+              <option value="admin">Manager / Admin</option>
               <option value="hr_manager">HR Manager</option>
+              <option value="super_admin">Super Admin</option>
             </select>
           </div>
           <div>
@@ -385,6 +410,33 @@ const Control = () => {
       )}
 
       {tab === "users" && <Table columns={columns} rows={users} emptyMessage="No users found" />}
+
+      {tab === "all_staff" && (
+        <div className="space-y-4">
+          <div className="card flex flex-wrap gap-6 text-sm">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ocean-400">Total staff accounts</p>
+              <p className="mt-1 text-2xl font-extrabold text-ocean-900">{allStaffUsers.length}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ocean-400">Active staff</p>
+              <p className="mt-1 text-2xl font-extrabold text-teal-500">{allStaffUsers.filter((u) => u.active).length}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ocean-400">Deactivated</p>
+              <p className="mt-1 text-2xl font-extrabold text-coral-500">{allStaffUsers.filter((u) => !u.active).length}</p>
+            </div>
+          </div>
+
+          {allStaffUsers.length === 0 ? (
+            <div className="card py-12 text-center text-sm text-ocean-400">
+              No staff accounts found.
+            </div>
+          ) : (
+            <Table columns={columns} rows={allStaffUsers} />
+          )}
+        </div>
+      )}
 
       {tab === "cashiers" && (
         <div className="space-y-4">
