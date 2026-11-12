@@ -63,7 +63,7 @@ const tooltipStyle = {
 };
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const [period, setPeriod] = useState("daily");
   const [customRange, setCustomRange] = useState({ from: "", to: "" });
   const [data, setData] = useState(null);
@@ -120,18 +120,22 @@ const Dashboard = () => {
   const delta = (key) => pct(current[key] || 0, previous[key] || 0);
 
   const isAdmin = ["super_admin", "admin"].includes(user?.role);
-  const isParkMetricsViewer = ["super_admin", "admin", "cashier"].includes(user?.role);
-  const isBillingCashier = ["cashier"].includes(user?.role);
-  const isStaff = !isAdmin;
+  const hasStaffDashboardPerm = can("staff_dashboard", "view");
+  const hasAdminDashboardPerm = can("dashboard", "view");
 
-  if (!isParkMetricsViewer) {
+  const isParkMetricsViewer =
+    ["super_admin", "admin", "cashier"].includes(user?.role) &&
+    !hasStaffDashboardPerm &&
+    (user?.role === "super_admin" || hasAdminDashboardPerm || !hasStaffDashboardPerm);
+
+  if (!isParkMetricsViewer || hasStaffDashboardPerm) {
     return (
       <div className="space-y-6">
         <div>
           <h2 className="text-xl font-bold text-ocean-900">Dashboard</h2>
           <p className="text-xs text-ocean-400">Welcome, {user?.name}</p>
         </div>
-        <MyAttendance />
+        <MyAttendance mode="dashboard" />
       </div>
     );
   }
@@ -195,9 +199,9 @@ const Dashboard = () => {
         </div>
       )}
 
-      {isStaff && (
+      {user?.staff && (
         <div className="mb-6">
-          <MyAttendance />
+          <MyAttendance mode="dashboard" />
         </div>
       )}
 

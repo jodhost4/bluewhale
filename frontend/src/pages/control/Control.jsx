@@ -5,7 +5,10 @@ import Badge from "../../components/common/Badge";
 import api from "../../api/axios";
 
 const MODULES = [
-  { key: "dashboard", label: "Dashboard" },
+  { key: "dashboard", label: "Dashboard (Admin/Cashier)" },
+  { key: "staff_dashboard", label: "Staff Dashboard" },
+  { key: "my_attendance", label: "My Attendance" },
+  { key: "tv_display", label: "TV Display" },
   { key: "billing", label: "Billing" },
   { key: "billing_history", label: "Bill History" },
   { key: "entry", label: "Entry Scan" },

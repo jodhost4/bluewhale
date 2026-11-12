@@ -41,7 +41,7 @@ const getPosition = () =>
     );
   });
 
-const MyAttendance = () => {
+const MyAttendance = ({ mode = "full" }) => {
   const { user, logout } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -270,51 +270,53 @@ const MyAttendance = () => {
           </div>
         </div>
 
-        {/* Today's Live Status */}
-        <div className="mt-4 rounded-xl border border-ocean-100 bg-white p-4 shadow-sm">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-ocean-400">Today's Attendance Status</p>
-          <div className="flex flex-wrap items-center gap-4">
-            <Badge color={today ? statusColors[today.status] : "gray"}>
-              {today ? today.status : "Not marked"}
-            </Badge>
-            <div className="flex items-center gap-4 text-sm text-ocean-600">
-              <span>
-                In: <strong className="text-ocean-900">{fmtTime(today?.checkIn)}</strong>
-              </span>
-              <span>
-                Out: <strong className="text-ocean-900">{fmtTime(today?.checkOut)}</strong>
-              </span>
+        {/* Today's Live Status (Shown in My Attendance, hidden on Staff Dashboard) */}
+        {mode !== "dashboard" && (
+          <div className="mt-4 rounded-xl border border-ocean-100 bg-white p-4 shadow-sm">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-ocean-400">Today's Attendance Status</p>
+            <div className="flex flex-wrap items-center gap-4">
+              <Badge color={today ? statusColors[today.status] : "gray"}>
+                {today ? today.status : "Not marked"}
+              </Badge>
+              <div className="flex items-center gap-4 text-sm text-ocean-600">
+                <span>
+                  In: <strong className="text-ocean-900">{fmtTime(today?.checkIn)}</strong>
+                </span>
+                <span>
+                  Out: <strong className="text-ocean-900">{fmtTime(today?.checkOut)}</strong>
+                </span>
+              </div>
+              <div className="ml-auto flex flex-wrap gap-2">
+                <button
+                  onClick={() => handleAction("checkin")}
+                  disabled={busy || !!today?.checkIn}
+                  className="btn-secondary text-xs sm:text-sm"
+                >
+                  <LogIn size={15} /> Check In
+                </button>
+                <button
+                  onClick={() => handleAction("checkout")}
+                  disabled={busy || !today?.checkIn || !!today?.checkOut}
+                  className="btn-secondary text-xs sm:text-sm"
+                >
+                  <LogOut size={15} /> Check Out
+                </button>
+              </div>
             </div>
-            <div className="ml-auto flex flex-wrap gap-2">
-              <button
-                onClick={() => handleAction("checkin")}
-                disabled={busy || !!today?.checkIn}
-                className="btn-secondary text-xs sm:text-sm"
+            {gpsNote && (
+              <div
+                className={`mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${
+                  gpsNote.type === "error"
+                    ? "border-red-200 bg-red-50 text-red-700"
+                    : "border-amber-200 bg-amber-50 text-amber-700"
+                }`}
               >
-                <LogIn size={15} /> Check In
-              </button>
-              <button
-                onClick={() => handleAction("checkout")}
-                disabled={busy || !today?.checkIn || !!today?.checkOut}
-                className="btn-secondary text-xs sm:text-sm"
-              >
-                <LogOut size={15} /> Check Out
-              </button>
-            </div>
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                {gpsNote.text}
+              </div>
+            )}
           </div>
-          {gpsNote && (
-            <div
-              className={`mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${
-                gpsNote.type === "error"
-                  ? "border-red-200 bg-red-50 text-red-700"
-                  : "border-amber-200 bg-amber-50 text-amber-700"
-              }`}
-            >
-              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-              {gpsNote.text}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Salary & Attendance Cards for the Selected Month */}
@@ -389,17 +391,21 @@ const MyAttendance = () => {
         </div>
       </div>
 
-      {/* Day by Day Recent Attendance Records */}
-      <div className="card">
-        <h3 className="mb-3 text-base font-bold text-ocean-900">Recent Attendance History</h3>
-        <Table columns={columns} rows={data?.recent || []} emptyMessage="No attendance records yet" />
-      </div>
+      {/* Day by Day Recent Attendance Records (Shown in My Attendance, hidden on Staff Dashboard) */}
+      {mode !== "dashboard" && (
+        <>
+          <div className="card">
+            <h3 className="mb-3 text-base font-bold text-ocean-900">Recent Attendance History</h3>
+            <Table columns={columns} rows={data?.recent || []} emptyMessage="No attendance records yet" />
+          </div>
 
-      {pendingAction && (
-        <FaceCapture
-          onCapture={(photo) => runAction(pendingAction.scope, photo, pendingAction.gps)}
-          onClose={() => setPendingAction(null)}
-        />
+          {pendingAction && (
+            <FaceCapture
+              onCapture={(photo) => runAction(pendingAction.scope, photo, pendingAction.gps)}
+              onClose={() => setPendingAction(null)}
+            />
+          )}
+        </>
       )}
     </div>
   );

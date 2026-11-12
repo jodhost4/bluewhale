@@ -27,11 +27,11 @@ const staffRoles = ["billing_staff", "cashier", "outdoor_staff", "indoor_staff",
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["super_admin", "admin", ...staffRoles], module: "dashboard" },
-  { to: "/attendance/my", label: "My Attendance", icon: CalendarClock, roles: staffRoles, module: null },
+  { to: "/attendance/my", label: "My Attendance", icon: CalendarClock, roles: ["super_admin", "admin", ...staffRoles], module: "my_attendance" },
   { to: "/billing", label: "Billing", icon: Receipt, roles: ["super_admin", "admin", "billing_staff", "cashier"], module: "billing" },
   { to: "/billing/history", label: "Bill History", icon: Receipt, roles: ["super_admin", "admin", "billing_staff", "cashier"], module: "billing_history" },
   { to: "/entry", label: "Entry Scan", icon: ScanLine, roles: ["super_admin", "admin", "entry_staff"], module: "entry" },
-  { to: "/tv-display", label: "TV Display", icon: Tv, roles: null, module: "entry" },
+  { to: "/tv-display", label: "TV Display", icon: Tv, roles: null, module: "tv_display" },
   { to: "/customers", label: "Customer CRM", icon: Users, roles: ["super_admin", "admin", "billing_staff"], module: "customers" },
   { to: "/customers/followup", label: "Follow-up List", icon: Users, roles: ["super_admin", "admin", "billing_staff"], module: "customers" },
   { to: "/enquiries", label: "Enquiries", icon: MessageSquare, roles: ["super_admin", "admin", "billing_staff"], module: "enquiries" },
@@ -61,6 +61,9 @@ const Sidebar = ({ open, onClose }) => {
   const visibleItems = navItems.filter((item) => {
     const roleOk = !item.roles || item.roles.includes(user?.role);
     if (hasExplicitPerms) {
+      if (item.module === "dashboard") {
+        return can("dashboard", "view") || can("staff_dashboard", "view");
+      }
       return item.module ? can(item.module, "view") : roleOk;
     }
     return roleOk;
