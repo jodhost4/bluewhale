@@ -118,6 +118,9 @@ const ParkMetricsDashboard = ({ user, can }) => {
 
   const delta = (key) => pct(current[key] || 0, previous[key] || 0);
 
+  const isAdmin = ["super_admin", "admin"].includes(user?.role);
+  const isParkMetricsViewer = ["super_admin", "admin", "cashier"].includes(user?.role);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -174,12 +177,6 @@ const ParkMetricsDashboard = ({ user, can }) => {
               {new Date(data.range.to).toLocaleDateString("en-IN")}
             </p>
           )}
-        </div>
-      )}
-
-      {user?.staff && (
-        <div className="mb-6">
-          <MyAttendance mode="dashboard" />
         </div>
       )}
 
@@ -344,33 +341,41 @@ const ParkMetricsDashboard = ({ user, can }) => {
 const Dashboard = () => {
   const { user, can } = useAuth();
 
-  const hasStaffDashboardPerm = can("staff_dashboard", "view");
-  const hasAdminDashboardPerm =
-    user?.permissions &&
-    typeof user.permissions === "object" &&
-    !Array.isArray(user.permissions)
-      ? Boolean(user.permissions?.dashboard?.view)
-      : false;
-
-  const isParkMetricsViewer =
-    ["super_admin", "admin", "cashier"].includes(user?.role) &&
-    !hasStaffDashboardPerm &&
-    (user?.role === "super_admin" || hasAdminDashboardPerm || !hasStaffDashboardPerm);
-
-  // Non-park-metrics viewers (staff or users with Staff Dashboard permission) see their personal staff dashboard
-  if (!isParkMetricsViewer || hasStaffDashboardPerm) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-xl font-bold text-ocean-900">Dashboard</h2>
-          <p className="text-xs text-ocean-400">Welcome, {user?.name}</p>
-        </div>
-        <MyAttendance mode="dashboard" />
-      </div>
-    );
+  // Super Admin and Admin always view the full Park Metrics Dashboard (Sales, Bills, Visitors, Trends, etc.)
+  if (user?.role === "super_admin" || user?.role === "admin") {
+    return <ParkMetricsDashboard user={user} can={can} />;
   }
 
-  return <ParkMetricsDashboard user={user} can={can} />;
+  // Cashier role also views the Park Metrics Dashboard by default
+  if (user?.role === "cashier") {
+    const perms = user?.permissions;
+    const hasExplicitPerms =
+      perms && typeof perms === "object" && !Array.isArray(perms) && Object.keys(perms).length > 0;
+    if (hasExplicitPerms && perms?.staff_dashboard?.view && !perms?.dashboard?.view) {
+      return (
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-xl font-bold text-ocean-900">Dashboard</h2>
+            <p className="text-xs text-ocean-400">Welcome, {user?.name}</p>
+          </div>
+          <MyAttendance mode="dashboard" />
+        </div>
+      );
+    }
+    return <ParkMetricsDashboard user={user} can={can} />;
+  }
+
+  // All other staff (e.g. indoor_staff, outdoor_staff, entry_staff, exit_staff, etc.)
+  // see their personal staff dashboard (salary, working days, joining date, etc.)
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-bold text-ocean-900">Dashboard</h2>
+        <p className="text-xs text-ocean-400">Welcome, {user?.name}</p>
+      </div>
+      <MyAttendance mode="dashboard" />
+    </div>
+  );
 };
 
 export default Dashboard;
