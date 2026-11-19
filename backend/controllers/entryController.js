@@ -489,36 +489,71 @@ const extendSession = asyncHandler(async (req, res) => {
   
   await wristTag.save();
 
-  // Create extension bill for 300 RS
+  // Create extension bill for 300 RS with guaranteed unique sequential billNumber
   const year = new Date().getFullYear();
-  const lastBill = await Bill.findOne({ billNumber: new RegExp(`^BW-${year}`) }).sort({ createdAt: -1 });
-  let seq = 1;
-  if (lastBill) {
-    const lastSeq = parseInt(lastBill.billNumber.replace(`BW-${year}`, ''), 10);
-    if (!isNaN(lastSeq)) seq = lastSeq + 1;
+  let maxSeq = 0;
+
+  const [lastByNum, lastByCreated] = await Promise.all([
+    Bill.findOne({ billNumber: new RegExp(`^BW-${year}`) }).sort({ billNumber: -1 }),
+    Bill.findOne({ billNumber: new RegExp(`^BW-${year}`) }).sort({ createdAt: -1 }),
+  ]);
+
+  for (const doc of [lastByNum, lastByCreated]) {
+    if (doc && doc.billNumber) {
+      const rawDigits = doc.billNumber.replace(`BW-${year}`, "").replace(/\D/g, "");
+      const parsed = parseInt(rawDigits, 10);
+      if (!isNaN(parsed) && parsed > maxSeq) {
+        maxSeq = parsed;
+      }
+    }
   }
-  const billNumber = `BW-${year}${String(seq).padStart(4, '0')}`;
+
+  let seq = maxSeq + 1;
+  let billNumber = `BW-${year}${String(seq).padStart(4, "0")}`;
+
+  while (await Bill.exists({ billNumber })) {
+    seq++;
+    billNumber = `BW-${year}${String(seq).padStart(4, "0")}`;
+  }
 
   const extensionAmount = 300;
 
-  const bill = await Bill.create({
-    billNumber,
-    customer: wristTag.customer._id,
-    package: wristTag.package._id,
-    adults: 0,
-    children: 0,
-    below5: 0,
-    parents: 0,
-    socks: false,
-    socksPrice: 0,
-    socksAmount: 0,
-    baseAmount: extensionAmount,
-    discount: 0,
-    finalAmount: extensionAmount,
-    paymentMode: paymentMode || "cash",
-    notes: `Session Extended by ${additionalMinutes} mins for tag ${tagId}`,
-    createdBy: req.user ? req.user._id : undefined,
-  });
+  let bill;
+  let attempts = 0;
+  while (!bill && attempts < 5) {
+    try {
+      bill = await Bill.create({
+        billNumber,
+        customer: wristTag.customer._id,
+        package: wristTag.package._id,
+        adults: 0,
+        children: 0,
+        below5: 0,
+        parents: 0,
+        socks: false,
+        socksPrice: 0,
+        socksAmount: 0,
+        baseAmount: extensionAmount,
+        discount: 0,
+        finalAmount: extensionAmount,
+        paymentMode: paymentMode || "cash",
+        notes: `Session Extended by ${additionalMinutes} mins for tag ${tagId}`,
+        createdBy: req.user ? req.user._id : undefined,
+      });
+    } catch (err) {
+      if (err.code === 11000 && (err.keyPattern?.billNumber || (err.message && err.message.includes("billNumber")))) {
+        attempts++;
+        seq++;
+        billNumber = `BW-${year}${String(seq).padStart(4, "0")}`;
+        while (await Bill.exists({ billNumber })) {
+          seq++;
+          billNumber = `BW-${year}${String(seq).padStart(4, "0")}`;
+        }
+      } else {
+        throw err;
+      }
+    }
+  }
 
   wristTag.customer.totalSpending = (wristTag.customer.totalSpending || 0) + extensionAmount;
   await wristTag.customer.save();

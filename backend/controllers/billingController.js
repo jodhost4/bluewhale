@@ -112,37 +112,74 @@ const createBill = asyncHandler(async (req, res) => {
 
   const finalAmount = Math.max(baseAmount - discount, 0);
 
-  // 4. Create the bill
+  // 4. Create the bill with guaranteed unique sequential billNumber
   const year = new Date().getFullYear();
-  const lastBill = await Bill.findOne({ billNumber: new RegExp(`^BW-${year}`) }).sort({ createdAt: -1 });
-  let seq = 1;
-  if (lastBill) {
-    const lastSeq = parseInt(lastBill.billNumber.replace(`BW-${year}`, ''), 10);
-    if (!isNaN(lastSeq)) seq = lastSeq + 1;
-  }
-  const billNumber = `BW-${year}${String(seq).padStart(4, '0')}`;
+  let maxSeq = 0;
 
-  const bill = await Bill.create({
-    billNumber,
-    customer: customer._id,
-    package: pkg._id,
-    adults: adultCount,
-    children: childCount,
-    below5: below5Count,
-    parents: parentCount,
-    parentPrice: Number(parentPrice),
-    parentAmount: parentsAmount,
-    socks: socksEnabled,
-    socksPrice: Number(socksPrice) || 50,
-    socksAmount: socksCharge,
-    baseAmount,
-    discount,
-    couponCode: appliedCouponCode ? appliedCouponCode._id : undefined,
-    finalAmount,
-    paymentMode,
-    notes,
-    createdBy: req.user ? req.user._id : undefined,
-  });
+  // Check both billNumber descending and createdAt descending to find the highest sequence
+  const [lastByNum, lastByCreated] = await Promise.all([
+    Bill.findOne({ billNumber: new RegExp(`^BW-${year}`) }).sort({ billNumber: -1 }),
+    Bill.findOne({ billNumber: new RegExp(`^BW-${year}`) }).sort({ createdAt: -1 }),
+  ]);
+
+  for (const doc of [lastByNum, lastByCreated]) {
+    if (doc && doc.billNumber) {
+      const rawDigits = doc.billNumber.replace(`BW-${year}`, "").replace(/\D/g, "");
+      const parsed = parseInt(rawDigits, 10);
+      if (!isNaN(parsed) && parsed > maxSeq) {
+        maxSeq = parsed;
+      }
+    }
+  }
+
+  let seq = maxSeq + 1;
+  let billNumber = `BW-${year}${String(seq).padStart(4, "0")}`;
+
+  // Ensure billNumber does not already exist in the database
+  while (await Bill.exists({ billNumber })) {
+    seq++;
+    billNumber = `BW-${year}${String(seq).padStart(4, "0")}`;
+  }
+
+  let bill;
+  let attempts = 0;
+  while (!bill && attempts < 5) {
+    try {
+      bill = await Bill.create({
+        billNumber,
+        customer: customer._id,
+        package: pkg._id,
+        adults: adultCount,
+        children: childCount,
+        below5: below5Count,
+        parents: parentCount,
+        parentPrice: Number(parentPrice),
+        parentAmount: parentsAmount,
+        socks: socksEnabled,
+        socksPrice: Number(socksPrice) || 50,
+        socksAmount: socksCharge,
+        baseAmount,
+        discount,
+        couponCode: appliedCouponCode ? appliedCouponCode._id : undefined,
+        finalAmount,
+        paymentMode,
+        notes,
+        createdBy: req.user ? req.user._id : undefined,
+      });
+    } catch (err) {
+      if (err.code === 11000 && (err.keyPattern?.billNumber || (err.message && err.message.includes("billNumber")))) {
+        attempts++;
+        seq++;
+        billNumber = `BW-${year}${String(seq).padStart(4, "0")}`;
+        while (await Bill.exists({ billNumber })) {
+          seq++;
+          billNumber = `BW-${year}${String(seq).padStart(4, "0")}`;
+        }
+      } else {
+        throw err;
+      }
+    }
+  }
 
   // 5. Mark coupon as used
   if (appliedCouponCode) {
